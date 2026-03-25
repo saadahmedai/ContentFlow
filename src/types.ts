@@ -62,16 +62,5 @@ export interface AppData {
 export interface Settings {
   sheetsUrl: string;
   lastSync: number;
-  ntfyTopic: string;
-  vapidKey?: string;
-  notificationsEnabled: boolean;
-  sharedGoogleToken?: string;
-  notifications: {
-    newIdea: boolean;
-    stageChange: boolean;
-    deadlineApproaching: boolean;
-    dailyReminders: boolean;
-    lowIdeas: boolean;
-  };
   channels: Channel[];
 }
