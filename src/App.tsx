@@ -29,6 +29,7 @@ import firebaseConfig from '../firebase-applet-config.json';
 import { 
   auth, 
   db, 
+  messaging,
   googleProvider, 
   signInWithPopup, 
   signOut,
@@ -43,7 +44,9 @@ import {
   orderBy, 
   handleFirestoreError, 
   OperationType,
-  FirebaseUser
+  FirebaseUser,
+  getToken,
+  onMessage
 } from './firebase';
 
 // --- Components ---
@@ -66,6 +69,7 @@ export default function App() {
   const [settings, setSettings] = useState<Settings>(getInitialSettings());
   const [isSyncing, setIsSyncing] = useState(false);
   const [toasts, setToasts] = useState<{ id: string; title: string; body: string; type: 'info' | 'success' | 'error' }[]>([]);
+  const [fcmToken, setFcmToken] = useState<string | null>(null);
 
   const dataRef = useRef(data);
   const settingsRef = useRef(settings);
@@ -198,6 +202,41 @@ export default function App() {
   useEffect(() => {
     saveLocalSettings(settings);
   }, [settings]);
+
+  useEffect(() => {
+    if (user && messaging) {
+      const requestPermission = async () => {
+        try {
+          const permission = await Notification.requestPermission();
+          if (permission === 'granted') {
+            const token = await getToken(messaging, { 
+              // Replace with your actual VAPID key from Firebase Console -> Project Settings -> Cloud Messaging -> Web Push certificates
+              vapidKey: 'YOUR_VAPID_KEY_HERE'
+            });
+            if (token) {
+              setFcmToken(token);
+              // Store token in user's document
+              await updateDoc(doc(db, 'users', user.key), {
+                fcmToken: token,
+                updatedAt: Date.now()
+              });
+            }
+          }
+        } catch (err) {
+          console.error('Notification permission error:', err);
+        }
+      };
+      requestPermission();
+
+      const unsubMessage = onMessage(messaging, (payload) => {
+        console.log('Foreground message received:', payload);
+        if (payload.notification) {
+          addToast(payload.notification.title || 'Notification', payload.notification.body || '', 'info');
+        }
+      });
+      return () => unsubMessage();
+    }
+  }, [user]);
 
   // --- Handlers ---
 
@@ -596,6 +635,24 @@ function Ideation({ user, data, setData, settings, addToast }: any) {
     (i.title.toLowerCase().includes(search.toLowerCase()) || i.desc.toLowerCase().includes(search.toLowerCase()))
   );
 
+  const triggerNotification = async (targetUserKey: UserKey, title: string, body: string) => {
+    if (!settings.notificationsEnabled) return;
+    
+    try {
+      // Write to a 'notifications' collection that the server listens to
+      const notificationId = crypto.randomUUID();
+      await setDoc(doc(db, 'notifications', notificationId), {
+        id: notificationId,
+        targetUserKey,
+        title,
+        body,
+        createdAt: Date.now()
+      });
+    } catch (err) {
+      console.error('Failed to trigger notification:', err);
+    }
+  };
+
   const handleAddIdea = async () => {
     if (!newIdea.title) return;
     const idea: Idea = {
@@ -615,6 +672,10 @@ function Ideation({ user, data, setData, settings, addToast }: any) {
       setShowAddModal(false);
       setNewIdea({ title: '', channel: DEFAULT_CHANNELS[0].id, desc: '' });
       addToast('Idea Added', `'${idea.title}' has been added to the ideation pool.`, 'success');
+      
+      // Notify the other user
+      const otherUserKey = user.key === 'saad' ? 'sarim' : 'saad';
+      triggerNotification(otherUserKey, 'New Idea Added', `${user.name} added: ${idea.title}`);
     } catch (err) {
       handleFirestoreError(err, OperationType.WRITE, `ideas/${idea.id}`);
     }
@@ -641,6 +702,10 @@ function Ideation({ user, data, setData, settings, addToast }: any) {
         updatedAt: Date.now()
       });
       addToast('Idea Approved', `'${idea.title}' is now in Approved Ideas.`, 'success');
+      
+      // Notify the other user
+      const otherUserKey = user.key === 'saad' ? 'sarim' : 'saad';
+      triggerNotification(otherUserKey, 'Idea Approved', `${user.name} approved: ${idea.title}`);
     } catch (err) {
       handleFirestoreError(err, OperationType.UPDATE, `ideas/${idea.id}`);
     }
@@ -1067,6 +1132,10 @@ function Pipeline({ user, data, setData, settings, addToast, isShared }: any) {
       setMoveModal(null);
       setMoveMessage('');
       addToast('Stage Updated', `Item moved to ${stageLabel}.`, 'success');
+
+      // Notify the other user
+      const otherUserKey = user.key === 'saad' ? 'sarim' : 'saad';
+      triggerNotification(otherUserKey, 'Pipeline Update', `${user.name} moved '${item.title}' to ${stageLabel.toUpperCase()}`);
     } catch (err) {
       handleFirestoreError(err, OperationType.UPDATE, `pipeline/${itemId}`);
     }
@@ -1301,11 +1370,61 @@ function SettingsPage({ user, data, setData, settings, setSettings, addToast }: 
     }
   };
 
+  const toggleNotifications = async () => {
+    const newStatus = !settings.notificationsEnabled;
+    setSettings({ ...settings, notificationsEnabled: newStatus });
+    try {
+      await updateDoc(doc(db, 'settings', 'global'), {
+        notificationsEnabled: newStatus
+      });
+      addToast('Settings Updated', `Notifications ${newStatus ? 'enabled' : 'disabled'}.`, 'success');
+    } catch (err) {
+      handleFirestoreError(err, OperationType.UPDATE, 'settings/global');
+    }
+  };
+
   return (
     <div className="max-w-2xl mx-auto space-y-12 pb-20">
       <header>
         <h1 className="text-3xl font-bold">Settings</h1>
       </header>
+
+      {/* Notifications Section */}
+      <section className="space-y-4">
+        <div className="flex items-center gap-2 text-zinc-500 uppercase tracking-widest text-xs font-bold">
+          <AlertCircle size={14} />
+          Preferences
+        </div>
+        <div className="bg-[#111] border border-[#2a2a2a] rounded-xl p-6 space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="space-y-1">
+              <h3 className="font-bold">Push Notifications</h3>
+              <p className="text-xs text-zinc-500">Receive alerts when the other user updates the pipeline or adds ideas.</p>
+            </div>
+            <button 
+              onClick={toggleNotifications}
+              className={`w-12 h-6 rounded-full transition-colors relative ${settings.notificationsEnabled ? 'bg-white' : 'bg-zinc-800'}`}
+            >
+              <div className={`absolute top-1 w-4 h-4 rounded-full transition-all ${settings.notificationsEnabled ? 'right-1 bg-black' : 'left-1 bg-zinc-500'}`}></div>
+            </button>
+          </div>
+          
+          {settings.notificationsEnabled && (
+            <div className="pt-4 border-t border-[#2a2a2a] flex items-center justify-between">
+              <div className="space-y-1">
+                <h3 className="font-bold text-sm">Test Notification</h3>
+                <p className="text-[10px] text-zinc-500">Send a test alert to yourself to verify it's working.</p>
+              </div>
+              <button 
+                onClick={() => triggerNotification(user.key, 'Test Alert', 'This is a test notification from ContentFlow!')}
+                className="px-3 py-1.5 bg-[#1a1a1a] text-white text-xs font-bold rounded hover:bg-zinc-800 transition-colors"
+              >
+                Send Test
+              </button>
+            </div>
+          )}
+        </div>
+      </section>
 
       {/* Firebase Info Section */}
       <section className="space-y-4">
