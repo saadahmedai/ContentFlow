@@ -1,0 +1,5 @@
+{
+  "name": "ContentFlow",
+  "description": "A PWA for content creators to manage their YouTube/TikTok production pipeline with Google Sheets sync.",
+  "requestFramePermissions": []
+}

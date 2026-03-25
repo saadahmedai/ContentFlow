@@ -1,0 +1,105 @@
+{
+  "entities": {
+    "Idea": {
+      "title": "Idea",
+      "description": "A content idea proposed by a user.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "channel": { "type": "string" },
+        "desc": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "approved", "discarded", "in_pipeline"] },
+        "ratings": { "type": "object" },
+        "addedBy": { "type": "string" },
+        "createdAt": { "type": "number" },
+        "updatedAt": { "type": "number" },
+        "approvedAt": { "type": "number" }
+      },
+      "required": ["id", "title", "channel", "status", "addedBy", "createdAt", "updatedAt"]
+    },
+    "PipelineItem": {
+      "title": "PipelineItem",
+      "description": "An idea that has been approved and is moving through production stages.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "ideaId": { "type": "string" },
+        "title": { "type": "string" },
+        "channel": { "type": "string" },
+        "stage": { "type": "string", "enum": ["scripting", "editing", "ready", "uploaded"] },
+        "dueDate": { "type": "string" },
+        "movedBy": { "type": "string" },
+        "movedAt": { "type": "number" },
+        "uploadedAt": { "type": "number" },
+        "createdAt": { "type": "number" },
+        "updatedAt": { "type": "number" }
+      },
+      "required": ["id", "ideaId", "title", "channel", "stage", "movedBy", "movedAt", "createdAt", "updatedAt"]
+    },
+    "CompletedItem": {
+      "title": "CompletedItem",
+      "description": "An item that has finished the production pipeline.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "ideaId": { "type": "string" },
+        "title": { "type": "string" },
+        "channel": { "type": "string" },
+        "stage": { "type": "string" },
+        "dueDate": { "type": "string" },
+        "movedBy": { "type": "string" },
+        "movedAt": { "type": "number" },
+        "uploadedAt": { "type": "number" },
+        "createdAt": { "type": "number" },
+        "updatedAt": { "type": "number" },
+        "completedAt": { "type": "number" }
+      },
+      "required": ["id", "ideaId", "title", "channel", "stage", "completedAt"]
+    },
+    "Settings": {
+      "title": "Settings",
+      "description": "Application-wide settings.",
+      "type": "object",
+      "properties": {
+        "ntfyTopic": { "type": "string" },
+        "notificationsEnabled": { "type": "boolean" },
+        "notifications": { "type": "object" },
+        "channels": { "type": "array" }
+      }
+    },
+    "users": {
+      "title": "User",
+      "description": "User profile and FCM tokens",
+      "type": "object",
+      "properties": {
+        "fcmToken": { "type": "string", "description": "Firebase Cloud Messaging token" },
+        "email": { "type": "string", "description": "User email" },
+        "name": { "type": "string", "description": "User name" },
+        "updatedAt": { "type": "number", "description": "Last updated timestamp" }
+      }
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "users",
+      "description": "User profiles"
+    },
+    "/ideas/{ideaId}": {
+      "schema": "Idea",
+      "description": "Collection of content ideas."
+    },
+    "/pipeline/{itemId}": {
+      "schema": "PipelineItem",
+      "description": "Collection of items in the production pipeline."
+    },
+    "/completed/{itemId}": {
+      "schema": "CompletedItem",
+      "description": "Collection of completed items."
+    },
+    "/settings/global": {
+      "schema": "Settings",
+      "description": "Global application settings."
+    }
+  }
+}

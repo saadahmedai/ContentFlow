@@ -1,0 +1,153 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: ideas
+    // Document ID: auto-generated
+    // Fields:
+    //   - id: string (required)
+    //   - title: string (required, 1-100 chars)
+    //   - channel: string (required)
+    //   - desc: string (optional)
+    //   - status: string (required, enum: ['pending', 'approved', 'discarded', 'in_pipeline'])
+    //   - ratings: map (optional)
+    //   - addedBy: string (required)
+    //   - createdAt: number (required)
+    //   - updatedAt: number (required)
+    //   - approvedAt: number (optional)
+    //
+    // Collection: pipeline
+    // Document ID: auto-generated
+    // Fields:
+    //   - id: string (required)
+    //   - ideaId: string (required)
+    //   - title: string (required)
+    //   - channel: string (required)
+    //   - stage: string (required, enum: ['scripting', 'editing', 'ready', 'uploaded'])
+    //   - dueDate: string (required)
+    //   - movedBy: string (required)
+    //   - movedAt: number (required)
+    //   - uploadedAt: number (optional)
+    //   - createdAt: number (required)
+    //   - updatedAt: number (required)
+    //
+    // Collection: completed
+    // Document ID: auto-generated
+    // Fields:
+    //   - id: string (required)
+    //   - ideaId: string (required)
+    //   - title: string (required)
+    //   - channel: string (required)
+    //   - stage: string (required)
+    //   - completedAt: number (required)
+    //
+    // Collection: settings
+    // Document ID: global
+    // Fields:
+    //   - ntfyTopic: string
+    //   - notificationsEnabled: bool
+    //   - notifications: map
+    //   - channels: list
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() &&
+        (request.auth.token.email == "nagharasad@gmail.com" && request.auth.token.email_verified == true);
+    }
+
+    function hasRequiredFields(fields) {
+      return request.resource.data.keys().hasAll(fields);
+    }
+
+    function hasOnlyAllowedFields(fields) {
+      return request.resource.data.keys().hasOnly(fields);
+    }
+
+    function isValidString(field, minLen, maxLen) {
+      return request.resource.data[field] is string &&
+        request.resource.data[field].size() >= minLen &&
+        request.resource.data[field].size() <= maxLen;
+    }
+
+    // ===============================================================
+    // Domain Validators
+    // ===============================================================
+
+    function isValidIdea(data) {
+      return hasRequiredFields(['id', 'title', 'channel', 'status', 'addedBy', 'createdAt', 'updatedAt']) &&
+             isValidString('title', 1, 200) &&
+             isValidString('channel', 1, 50) &&
+             data.status in ['pending', 'approved', 'discarded', 'in_pipeline'] &&
+             data.createdAt is number &&
+             data.updatedAt is number;
+    }
+
+    function isValidPipelineItem(data) {
+      return hasRequiredFields(['id', 'ideaId', 'title', 'channel', 'stage', 'movedBy', 'movedAt', 'createdAt', 'updatedAt']) &&
+             data.stage in ['scripting', 'editing', 'ready', 'uploaded'] &&
+             data.createdAt is number &&
+             data.updatedAt is number;
+    }
+
+    function isValidCompletedItem(data) {
+      return hasRequiredFields(['id', 'ideaId', 'title', 'channel', 'stage', 'completedAt']) &&
+             data.completedAt is number;
+    }
+
+    function isValidSettings(data) {
+      return data.notificationsEnabled is bool &&
+             data.channels is list;
+    }
+
+    // ===============================================================
+    // Match Rules
+    // ===============================================================
+
+    match /ideas/{ideaId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && isValidIdea(request.resource.data);
+      allow update: if isAuthenticated() && isValidIdea(request.resource.data);
+      allow delete: if isAuthenticated();
+    }
+
+    match /pipeline/{itemId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && isValidPipelineItem(request.resource.data);
+      allow update: if isAuthenticated() && isValidPipelineItem(request.resource.data);
+      allow delete: if isAuthenticated();
+    }
+
+    match /completed/{itemId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && isValidCompletedItem(request.resource.data);
+      allow update: if isAuthenticated() && isValidCompletedItem(request.resource.data);
+      allow delete: if isAuthenticated();
+    }
+
+    match /settings/{docId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && isValidSettings(request.resource.data);
+    }
+
+    match /users/{userId} {
+      allow read: if isAuthenticated() && request.auth.uid == userId;
+      allow write: if isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // Default deny
+    match /{path=**} {
+      allow read, write: if false;
+    }
+  }
+}
