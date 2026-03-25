@@ -63,4 +63,5 @@ export interface Settings {
   sheetsUrl: string;
   lastSync: number;
   channels: Channel[];
+  notificationsEnabled: boolean;
 }
