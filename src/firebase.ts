@@ -2,6 +2,13 @@ import { initializeApp } from 'firebase/app';
 import { getAuth, signInWithPopup, signOut, GoogleAuthProvider, onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
 import { getFirestore, doc, collection, onSnapshot, getDoc, setDoc, updateDoc, deleteDoc, query, where, orderBy, limit, getDocFromServer } from 'firebase/firestore';
 import { getMessaging, getToken, onMessage } from 'firebase/messaging';
+// Add these to your imports in src/firebase.ts
+import { 
+  signInWithRedirect, 
+  getRedirectResult 
+} from 'firebase/auth';
+
+
 
 // Import the Firebase configuration
 import firebaseConfig from '../firebase-applet-config.json';
@@ -12,6 +19,8 @@ export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
 export const auth = getAuth();
 export const messaging = typeof window !== 'undefined' ? getMessaging(app) : null;
 export const googleProvider = new GoogleAuthProvider();
+// Export them so they can be used in App.tsx
+export { signInWithRedirect, getRedirectResult };
 
 export enum OperationType {
   CREATE = 'create',
