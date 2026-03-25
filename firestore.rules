@@ -52,6 +52,21 @@ service cloud.firestore {
     //   - notifications: map
     //   - channels: list
     //
+    // Collection: notifications
+    // Document ID: auto-generated
+    // Fields:
+    //   - id: string
+    //   - targetUserKey: string
+    //   - title: string
+    //   - body: string
+    //   - createdAt: number
+    //
+    // Collection: users
+    // Document ID: userKey (saad/sarim)
+    // Fields:
+    //   - fcmToken: string
+    //   - updatedAt: number
+    //
     // ===============================================================
 
     // ===============================================================
@@ -140,9 +155,18 @@ service cloud.firestore {
       allow write: if isAuthenticated() && isValidSettings(request.resource.data);
     }
 
-    match /users/{userId} {
-      allow read: if isAuthenticated() && request.auth.uid == userId;
-      allow write: if isAuthenticated() && request.auth.uid == userId;
+    match /users/{userKey} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && (
+        (userKey == 'saad' && request.auth.token.email == "nagharasad@gmail.com") ||
+        (userKey == 'sarim' && (request.auth.token.email == "sarimk3110@gmail.com" || request.auth.token.email == "aviyashark@gmail.com"))
+      );
+    }
+
+    match /notifications/{notificationId} {
+      allow read: if false;
+      allow create: if isAuthenticated();
+      allow delete: if false; // Only server deletes after processing
     }
 
     // Default deny
