@@ -1,27 +1,67 @@
-import { Settings } from '../types';
-import { DEFAULT_CHANNELS } from '../constants';
+export type UserRole = 'admin' | 'editor';
+export type UserKey = 'saad' | 'sarim';
 
-const SETTINGS_KEY = 'cf_settings';
+export interface User {
+  name: string;
+  role: UserRole;
+  pin: string;
+  avatar: string;
+  key: UserKey;
+  emails: string[];
+}
 
-export const getInitialSettings = (): Settings => {
-  const stored = localStorage.getItem(SETTINGS_KEY);
-  const defaultSettings: Settings = {
-    sheetsUrl: '',
-    lastSync: 0,
-    channels: DEFAULT_CHANNELS,
-  };
-  
-  if (stored) {
-    try {
-      const parsed = JSON.parse(stored);
-      return { ...defaultSettings, ...parsed };
-    } catch (e) {
-      return defaultSettings;
-    }
-  }
-  return defaultSettings;
-};
+export type IdeaStatus = 'pending' | 'approved' | 'discarded' | 'in_pipeline';
 
-export const saveLocalSettings = (settings: Settings) => {
-  localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
-};
+export interface Idea {
+  id: string;
+  title: string;
+  channel: string;
+  desc: string;
+  status: IdeaStatus;
+  ratings: Record<UserKey, number>;
+  addedBy: UserKey;
+  createdAt: number;
+  updatedAt: number;
+  approvedAt?: number;
+}
+
+export type PipelineStage = 'scripting' | 'editing' | 'ready' | 'uploaded';
+
+export interface PipelineItem {
+  id: string;
+  ideaId: string;
+  title: string;
+  channel: string;
+  stage: PipelineStage;
+  dueDate: string; // ISO YYYY-MM-DD
+  movedBy: UserKey;
+  movedAt: number;
+  uploadedAt?: number;
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface CompletedItem extends PipelineItem {
+  completedAt: number;
+}
+
+export interface Channel {
+  id: string;
+  name: string;
+  color: string;
+  platforms: string[];
+}
+
+export interface AppData {
+  ideas: Idea[];
+  pipeline: PipelineItem[];
+  completed: CompletedItem[];
+  deletedIds?: string[];
+}
+
+export interface Settings {
+  sheetsUrl: string;
+  lastSync: number;
+  channels: Channel[];
+  notificationsEnabled: boolean;
+}
