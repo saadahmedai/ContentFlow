@@ -1,6 +1,7 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth, signInWithPopup, signOut, GoogleAuthProvider, onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
 import { getFirestore, doc, collection, onSnapshot, getDoc, setDoc, updateDoc, deleteDoc, query, where, orderBy, limit, getDocFromServer } from 'firebase/firestore';
+import { getMessaging, getToken, onMessage } from 'firebase/messaging';
 
 // Import the Firebase configuration
 import firebaseConfig from '../firebase-applet-config.json';
@@ -9,6 +10,7 @@ import firebaseConfig from '../firebase-applet-config.json';
 const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
 export const auth = getAuth();
+export const messaging = typeof window !== 'undefined' ? getMessaging(app) : null;
 export const googleProvider = new GoogleAuthProvider();
 
 export enum OperationType {
@@ -89,6 +91,8 @@ export {
   query, 
   where, 
   orderBy, 
-  limit 
+  limit,
+  getToken,
+  onMessage
 };
 export type { FirebaseUser };
