@@ -211,7 +211,7 @@ export default function App() {
           if (permission === 'granted') {
             const token = await getToken(messaging, { 
               // Replace with your actual VAPID key from Firebase Console -> Project Settings -> Cloud Messaging -> Web Push certificates
-              vapidKey: 'YOUR_VAPID_KEY_HERE'
+              vapidKey: 'BM4WeyX43BkPmC1qV2Q1xe2M2Edsy-dmCP78INrgYYkThBsa7nwAXXj0nfSqmi3uQdJgi1413gWuhOWNvqUm27o'
             });
             if (token) {
               setFcmToken(token);
